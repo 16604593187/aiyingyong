@@ -66,12 +66,27 @@ def warmup() -> None:
     kb = _get_knowledge_base()
     _get_openai_client()
 
-    # 先触发 Chroma collection 初始化
+    # 先触发 Chroma collection初始化
     kb.count()
 
     # 再触发 Embedding 模型实际 encode，避免首次查询卡顿
     embedding_utils = kb._get_embedding_utils()
     embedding_utils.get_embedding("warmup")
+
+
+def retrieve(question: str, top_k: int = 5) -> str:
+    """只做检索，返回可直接拼接到提示词中的上下文片段。"""
+    if not isinstance(question, str) or not question.strip():
+        raise ValueError("question must be a non-empty string")
+    if top_k <= 0:
+        return ""
+
+    knowledge_base = _get_knowledge_base()
+    hits = knowledge_base.search(question.strip(), top_k=top_k)
+    if not hits:
+        return ""
+
+    return _build_context(hits)
 
 
 def _build_context(hits: list[dict], max_context_chars: int = 3000) -> str:

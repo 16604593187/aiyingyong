@@ -58,9 +58,8 @@ def chat(user_input: str, history: list[dict]) -> tuple[str, list[dict]]:
     request_history = trim_messages(history, config_mine.MAX_HISTORY_TURNS)
     request_messages = [{"role": "system", "content": config_mine.SYSTEM_PROMPT}] + request_history
 
-    # RAG 检索：复用 layer4/rag.py 中的检索能力
-    retrieval_hits = rag._get_knowledge_base().search(question, top_k=5)
-    retrieval_context = rag._build_context(retrieval_hits)
+    # RAG 检索：复用 layer4/rag.py 提供的公开接口
+    retrieval_context = rag.retrieve(question, top_k=5)
     if retrieval_context:
         request_messages.append(
             {
