@@ -6,9 +6,80 @@ import knowledge_base
 
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
+SEPARATORS = ["\n\n", "\n", "。", "！", "？", "；", " ", ""]
 
 
-def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[str]:
+def _recursive_split_by_separators(text: str, separators: list[str], chunk_size: int) -> list[str]:
+    text = text.strip()
+    if not text:
+        return []
+    if len(text) <= chunk_size:
+        return [text]
+    if not separators:
+        return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+    separator = separators[0]
+    if separator == "":
+        return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+    if separator not in text:
+        return _recursive_split_by_separators(text, separators[1:], chunk_size)
+
+    parts = text.split(separator)
+    splits: list[str] = []
+    for index, part in enumerate(parts):
+        if not part:
+            continue
+
+        candidate = part + (separator if index < len(parts) - 1 else "")
+        if len(candidate) <= chunk_size:
+            splits.append(candidate)
+        else:
+            splits.extend(_recursive_split_by_separators(candidate, separators[1:], chunk_size))
+
+    return splits
+
+
+def _merge_with_overlap(splits: list[str], chunk_size: int, overlap: int) -> list[str]:
+    chunks: list[str] = []
+    current = ""
+
+    for split in splits:
+        piece = split.strip()
+        if not piece:
+            continue
+
+        if not current:
+            current = piece
+            continue
+
+        if len(current) + len(piece) <= chunk_size:
+            current += piece
+            continue
+
+        chunks.append(current)
+
+        if overlap > 0:
+            tail = current[-overlap:]
+            current = (tail + piece).strip()
+        else:
+            current = piece
+
+        while len(current) > chunk_size:
+            chunks.append(current[:chunk_size].strip())
+            if overlap > 0:
+                tail = current[chunk_size - overlap : chunk_size]
+                current = (tail + current[chunk_size:]).strip()
+            else:
+                current = current[chunk_size:].strip()
+
+    if current:
+        chunks.append(current)
+
+    return [chunk for chunk in chunks if chunk]
+
+
+def recursive_split(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[str]:
     if chunk_size <= 0:
         raise ValueError("chunk_size must be positive")
     if overlap < 0 or overlap >= chunk_size:
@@ -18,18 +89,12 @@ def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVE
     if not normalized:
         return []
 
-    step = chunk_size - overlap
-    chunks: list[str] = []
+    splits = _recursive_split_by_separators(normalized, SEPARATORS, chunk_size)
+    return _merge_with_overlap(splits, chunk_size, overlap)
 
-    start = 0
-    while start < len(normalized):
-        end = start + chunk_size
-        chunk = normalized[start:end]
-        if chunk:
-            chunks.append(chunk)
-        start += step
 
-    return chunks
+def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[str]:
+    return recursive_split(text, chunk_size=chunk_size, overlap=overlap)
 
 
 def collect_source_files(data_dir: Path) -> list[Path]:
@@ -51,7 +116,7 @@ def ingest_data() -> int:
 
     for file_path in files:
         content = file_path.read_text(encoding="utf-8")
-        pieces = chunk_text(content)
+        pieces = recursive_split(content)
         source_rel = file_path.relative_to(data_dir).as_posix()
 
         for idx, piece in enumerate(pieces):

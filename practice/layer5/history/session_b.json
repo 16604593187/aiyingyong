@@ -1,0 +1,23 @@
+{
+  "session_id": "session_b",
+  "created_at": "2026-05-12T16:20:22",
+  "updated_at": "2026-05-12T17:07:41",
+  "messages": [
+    {
+      "role": "user",
+      "content": "你谁啊"
+    },
+    {
+      "role": "assistant",
+      "content": "我是你的个人知识库助手，基于你记录的笔记和知识库内容为你提供帮助。有什么问题我可以回答吗？"
+    },
+    {
+      "role": "user",
+      "content": "随便讲点笔记，控制在20个字以内"
+    },
+    {
+      "role": "assistant",
+      "content": "项目结构：第四层核心RAG升级，第五层记忆与持久化。"
+    }
+  ]
+}
