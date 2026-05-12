@@ -1,0 +1,15 @@
+{
+  "session_id": "session_c",
+  "created_at": "2026-05-12T19:18:09",
+  "updated_at": "2026-05-12T19:18:14",
+  "messages": [
+    {
+      "role": "user",
+      "content": "who are you"
+    },
+    {
+      "role": "assistant",
+      "content": "我是你的个人知识库助手，基于你记录的笔记内容为你提供准确、有依据的回答。"
+    }
+  ]
+}

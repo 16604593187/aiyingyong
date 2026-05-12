@@ -101,9 +101,10 @@ def print_welcome() -> None:
     print(f"  上下文最大轮数（发送给 API）：{config_mine.MAX_HISTORY_TURNS}")
     print()
     print("  命令：")
-    print("    /history  —— 查看当前会话历史")
-    print("    /clear    —— 清空当前会话历史")
-    print("    /exit     —— 退出程序")
+    print("    /history      —— 查看当前会话历史（完整存盘）")
+    print("    /api_history  —— 查看发送给 API 的历史窗口")
+    print("    /clear        —— 清空当前会话历史")
+    print("    /exit         —— 退出程序")
     print("=" * 60)
     print()
 
@@ -123,6 +124,25 @@ def print_history(history: list[dict]) -> None:
             content_preview += "..."
         print(f"  [{i}] {role_label}：{content_preview}")
     print("-" * 40)
+    print()
+
+
+def print_api_history(history: list[dict]) -> None:
+    window = trim_messages(history, config_mine.MAX_HISTORY_TURNS)
+
+    print("\n[发送给 API 的历史窗口]")
+    print(f"  system：{config_mine.SYSTEM_PROMPT[:80]}{'...' if len(config_mine.SYSTEM_PROMPT) > 80 else ''}")
+
+    if not window:
+        print("  [无历史消息，将仅发送 system prompt + 当前问题]\n")
+        return
+
+    print(f"  [历史消息 {len(window)} 条，来自最近 {config_mine.MAX_HISTORY_TURNS} 轮]")
+    for i, msg in enumerate(window, 1):
+        role = msg.get("role", "unknown")
+        content = str(msg.get("content", ""))
+        preview = content[:100] + ("..." if len(content) > 100 else "")
+        print(f"  [{i}] {role}: {preview}")
     print()
 
 
@@ -187,6 +207,9 @@ def main() -> None:
             continue
         elif user_input == "/history":
             print_history(history)
+            continue
+        elif user_input == "/api_history":
+            print_api_history(history)
             continue
 
         try:
