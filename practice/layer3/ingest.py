@@ -107,6 +107,9 @@ def ingest_data() -> int:
     current_dir = Path(__file__).resolve().parent
     data_dir = current_dir.parent / "data"
 
+    # 全量重建：每次 ingest 先清空向量库，再写入当前 data 目录的最新切片
+    knowledge_base.reset_collection()
+
     files = collect_source_files(data_dir)
     if not files:
         return 0
@@ -129,15 +132,13 @@ def ingest_data() -> int:
                 }
             )
 
-    before = knowledge_base.count()
     knowledge_base.add_documents(texts, metadatas)
-    after = knowledge_base.count()
-    return max(0, after - before)
+    return knowledge_base.count()
 
 
 def main() -> None:
-    inserted = ingest_data()
-    print(f"ingest 完成，新增切片数: {inserted}")
+    total = ingest_data()
+    print(f"ingest 完成，全量重建后切片数: {total}")
     print(f"当前知识库文档数: {knowledge_base.count()}")
 
 

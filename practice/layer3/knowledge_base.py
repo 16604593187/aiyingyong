@@ -164,6 +164,21 @@ def search(query: str, top_k: int = 5) -> list[dict]:
     return output
 
 
+def reset_collection() -> None:
+    """清空并重建 collection，用于全量重建知识库。"""
+    global _collection
+
+    _get_collection()
+    if _client is None:
+        raise RuntimeError("failed to initialize chroma client")
+
+    _client.delete_collection(name=COLLECTION_NAME)
+    _collection = _client.get_or_create_collection(
+        name=COLLECTION_NAME,
+        metadata={"hnsw:space": "cosine"},
+    )
+
+
 def count() -> int:
     """返回知识库中当前存储的文档数量"""
     return int(_get_collection().count())
