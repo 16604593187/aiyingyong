@@ -1,0 +1,30 @@
+{
+  "session_id": "quiz_test",
+  "created_at": "2026-05-13T17:21:29",
+  "updated_at": "2026-05-13T17:21:29",
+  "messages": [
+    {
+      "role": "assistant",
+      "content": "我来为你准备5道Python列表基础练习题，包含答案，并保存成文件。",
+      "tool_calls": [
+        {
+          "id": "call_00_ds5WJRV0glKx6MZNQaSK3828",
+          "type": "function",
+          "function": {
+            "name": "save_quiz",
+            "arguments": "{\"filename\": \"Python列表基础练习题\", \"content\": \"========== Python 列表基础练习题 ==========\\n\\n---\\n\\n### 题目1：创建与访问列表\\n创建一个包含 5 个你最喜欢的水果的列表，然后分别打印出列表中的第一个元素和最后一个元素。\\n\\n**答案：**\\n```python\\nfruits = ['苹果', '香蕉', '草莓', '橙子', '葡萄']\\nprint(fruits[0])   # 苹果\\nprint(fruits[-1])  # 葡萄\\n```\\n\\n---\\n\\n### 题目2：列表切片\\n给定列表 `nums = [10, 20, 30, 40, 50, 60, 70]`，请用切片操作获取以下子列表：\\n1. 前三个元素\\n2. 从索引2到索引5（不包含5）的元素\\n3. 所有偶数索引位置的元素\\n\\n**答案：**\\n```python\\nnums = [10, 20, 30, 40, 50, 60, 70]\\nprint(nums[:3])      # [10, 20, 30]\\nprint(nums[2:5])     # [30, 40, 50]\\nprint(nums[::2])     # [10, 30, 50, 70]\\n```\\n\\n---\\n\\n### 题目3：列表方法操作\\n已知列表 `scores = [88, 92, 75, 88, 90, 88]`，请完成以下操作：\\n1. 在末尾添加一个新分数 95\\n2. 统计 88 出现的次数\\n3. 找到 75 的索引位置\\n4. 对列表进行升序排序\\n\\n**答案：**\\n```python\\nscores = [88, 92, 75, 88, 90, 88]\\nscores.append(95)           # 添加 95\\nprint(scores.count(88))     # 3\\nprint(scores.index(75))     # 2\\nscores.sort()               # 升序排序\\nprint(scores)               # [75, 88, 88, 88, 90, 92, 95]\\n```\\n\\n---\\n\\n### 题目4：列表遍历与修改\\n有一个列表 `numbers = [1, 2, 3, 4, 5]`，请将列表中的每个元素都乘以 2，生成新的列表，并打印结果。\\n\\n**答案：**\\n```python\\nnumbers = [1, 2, 3, 4, 5]\\ndoubled = [n * 2 for n in numbers]   # 列表推导式\\nprint(doubled)  # [2, 4, 6, 8, 10]\\n\\n# 或者使用普通 for 循环：\\ndoubled2 = []\\nfor n in numbers:\\n    doubled2.append(n * 2)\\nprint(doubled2)  # [2, 4, 6, 8, 10]\\n```\\n\\n---\\n\\n### 题目5：列表合并与去重\\n有两个列表 `list_a = [1, 2, 3, 4]` 和 `list_b = [3, 4, 5, 6]`，请：\\n1. 合并两个列表\\n2. 去除合并后列表中的重复元素\\n3. 最终结果按升序排列\\n\\n**答案：**\\n```python\\nlist_a = [1, 2, 3, 4]\\nlist_b = [3, 4, 5, 6]\\n\\nmerged = list_a + list_b               # 合并\\nunique = list(set(merged))             # 去重\\nunique.sort()                          # 排序\\nprint(unique)  # [1, 2, 3, 4, 5, 6]\\n\\n# 一行完成：\\nresult = sorted(set(list_a + list_b))\\nprint(result)  # [1, 2, 3, 4, 5, 6]\\n```\\n\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_00_ds5WJRV0glKx6MZNQaSK3828",
+      "content": "/Users/lijiaxuan/Documents/second-brain/practice/layer7/test/exam/Python列表基础练习题.txt"
+    },
+    {
+      "role": "assistant",
+      "content": "已保存完成！文件路径为：`layer7/test/exam/Python列表基础练习题.txt`\n\n**5道题目概要：**\n\n| 题号 | 知识点 | 说明 |\n|------|--------|------|\n| 1 | 创建与访问 | 索引访问第一个和最后一个元素 |\n| 2 | 列表切片 | 切片的基本用法 |\n| 3 | 列表方法 | `append()`、`count()`、`index()`、`sort()` |\n| 4 | 遍历与修改 | 列表推导式生成新列表 |\n| 5 | 合并与去重 | `+` 合并、`set()` 去重、`sorted()` 排序 |\n\n每题都附带了代码答案和注释，可以直接运行练习。"
+    }
+  ]
+}

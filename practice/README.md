@@ -1,6 +1,6 @@
 # Second Brain — LLM 应用开发入门实验
 
-从零写一个具备 RAG、记忆持久化、意图路由和语义缓存能力的 AI 知识助手。不依赖 LangChain 等框架，每一层都从原理出发实现，通过实验验证理论。
+从零写一个具备 RAG、记忆持久化、意图路由、语义缓存和 Agent 工具调用能力的 AI 知识助手。不依赖 LangChain 等框架，每一层都从原理出发实现，通过实验验证理论。
 
 ## 项目结构
 
@@ -13,10 +13,11 @@ practice/
 ├── layer3/                  # Chroma 向量数据库 + 文档导入
 ├── layer4/                  # 完整 RAG 流水线
 ├── layer5/                  # 记忆持久化（session 管理 + RAG 集成）
-└── layer6/                  # Router 意图分类 + 语义缓存
+├── layer6/                  # Router 意图分类 + 语义缓存
+└── layer7/                  # Agent + Function Calling（工具调用）
 ```
 
-## 七层架构
+## 十层架构
 
 | 层 | 主题 | 核心文件 | 状态 |
 |---|---|---|---|
@@ -26,7 +27,10 @@ practice/
 | Layer 4 | 完整 RAG 流水线 | `layer4/rag.py`, `layer4/chat_rag.py` | ✅ |
 | Layer 5 | 记忆与持久化 | `layer5/memory.py`, `layer5/chat_memory.py` | ✅ |
 | Layer 6 | Router 意图分类 + 语义缓存 | `layer6/router.py`, `layer6/cache.py`, `layer6/chat_layer6.py` | ✅ |
-| Layer 7 | 系统评估（RAGAS） | — | 🔜 |
+| Layer 7 | Agent + Function Calling | `layer7/tools.py`, `layer7/agent.py`, `layer7/chat_agent.py` | ✅ |
+| Layer 8 | 混合检索 + Reranker | — | 🔜 |
+| Layer 9 | 内容压缩（Contextual Compression） | — | 🔜 |
+| Layer 10 | RAGAS 评估 | — | 🔜 |
 
 ## 技术栈
 
@@ -34,6 +38,7 @@ practice/
 - **Embedding**：本地 `bge-small-zh-v1.5`（sentence-transformers，CPU 推理）
 - **向量库**：Chroma（本地持久化）
 - **文本切片**：自实现递归字符切片（参考 LangChain RecursiveCharacterTextSplitter 原理）
+- **Agent 工具**：Tavily API（联网搜索）
 - **运行环境**：Python 3.10+，无框架依赖
 
 ## 快速开始
@@ -55,6 +60,7 @@ pip install -r layer2/requirements.txt
 OPENAI_API_KEY=your-deepseek-api-key
 OPENAI_API_BASE=https://api.deepseek.com/v1
 MODEL_NAME=deepseek-chat
+TAVILY_API_KEY=your-tavily-api-key   # Layer 7 联网搜索工具需要
 ```
 
 **3. 导入知识库**
@@ -67,7 +73,11 @@ python ingest.py
 **4. 启动对话终端**
 
 ```bash
-# 完整版（Layer 6）：Router + 语义缓存 + RAG + 记忆持久化
+# 完整版（Layer 7）：Agent + Function Calling + 工具调用
+cd layer7
+python chat_agent.py
+
+# Router + 语义缓存 + RAG + 记忆持久化（Layer 6）
 cd layer6
 python chat_layer6.py
 
@@ -94,12 +104,15 @@ python chat_mine.py
 
 **Layer 6**：Router 使用 LLM 做意图分类（`chitchat` / `rag` / `followup`），`max_tokens=8` 从 token 层面约束输出格式；语义缓存按意图分级阈值（闲聊 0.85，知识问答 0.90），`followup` 跳过缓存直接走对话历史。
 
+**Layer 7**：三个工具（`search_web` / `write_note` / `save_quiz`）以 JSON Schema 传给模型，由模型通过 `tool_choice="auto"` 自主决策调用时机；`run_agent` 实现 Function Calling 主循环（max_turns=10）；历史截断改为只在 `role=user` 处切割，保证 `tool_calls` / `tool` 消息对始终完整。
+
 ## 已知局限与待优化项
 
-- **混合意图**：Router 当前输出单一标签，"查一下知识库，上一条说的不对"这类同时包含 `followup` 和 `rag` 的输入无法正确处理。待优化为多标签输出。
+- **混合意图**：Router（Layer 6）当前输出单一标签，"查一下知识库，上一条说的不对"这类同时包含 `followup` 和 `rag` 的输入无法正确处理。待优化为多标签输出。
 - **缓存持久化**：语义缓存存在内存中，重启即清空。实际项目建议替换为 Redis（同时解决性能和持久化问题）。
 - **跨语言语义**：bge-small-zh 为中文模型，"你好" vs "hello" 余弦相似度仅 0.471，跨语言语义缓存命中率极低。
 - **知识库同步**：当前采用全量重建，实际项目建议改为差量同步（计算切片 ID 差集，只删除失效条目、新增变更条目）。
+- **纯向量召回**：Layer 3-7 的检索均为单一向量检索，精确名词、缩写、版本号等场景下召回质量有限，待 Layer 8 引入混合检索 + Reranker 改善。
 
 ## 学习笔记
 

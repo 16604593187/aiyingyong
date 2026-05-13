@@ -1,0 +1,1 @@
+Python 列表推导式的基本语法是 [expr for item in iterable if condition]，比 for 循环更简洁
