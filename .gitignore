@@ -8,7 +8,7 @@ __pycache__/
 *.pyc
 
 # 向量数据库（第三层生成，体积大）
-db/
+chroma_db/
 
 # 记忆文件（个人数据）
 memory/
