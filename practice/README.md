@@ -14,7 +14,8 @@ practice/
 ├── layer4/                  # 完整 RAG 流水线
 ├── layer5/                  # 记忆持久化（session 管理 + RAG 集成）
 ├── layer6/                  # Router 意图分类 + 语义缓存
-└── layer7/                  # Agent + Function Calling（工具调用）
+├── layer7/                  # Agent + Function Calling（工具调用）
+└── layer8/                  # 混合检索（向量 + BM25 + RRF）+ Reranker
 ```
 
 ## 十层架构
@@ -28,7 +29,7 @@ practice/
 | Layer 5 | 记忆与持久化 | `layer5/memory.py`, `layer5/chat_memory.py` | ✅ |
 | Layer 6 | Router 意图分类 + 语义缓存 | `layer6/router.py`, `layer6/cache.py`, `layer6/chat_layer6.py` | ✅ |
 | Layer 7 | Agent + Function Calling | `layer7/tools.py`, `layer7/agent.py`, `layer7/chat_agent.py` | ✅ |
-| Layer 8 | 混合检索 + Reranker | — | 🔜 |
+| Layer 8 | 混合检索 + Reranker | `layer8/retriever.py`, `layer8/hybrid_rag.py`, `layer8/chat_layer8.py` | ✅ |
 | Layer 9 | 内容压缩（Contextual Compression） | — | 🔜 |
 | Layer 10 | RAGAS 评估 | — | 🔜 |
 
@@ -39,6 +40,8 @@ practice/
 - **向量库**：Chroma（本地持久化）
 - **文本切片**：自实现递归字符切片（参考 LangChain RecursiveCharacterTextSplitter 原理）
 - **Agent 工具**：Tavily API（联网搜索）
+- **混合检索**：rank-bm25 + jieba 分词（BM25 关键词检索）
+- **Reranker**：`BAAI/bge-reranker-base`（Cross-Encoder 精排，sentence-transformers）
 - **运行环境**：Python 3.10+，无框架依赖
 
 ## 快速开始
@@ -73,7 +76,11 @@ python ingest.py
 **4. 启动对话终端**
 
 ```bash
-# 完整版（Layer 7）：Agent + Function Calling + 工具调用
+# 完整版（Layer 8）：混合检索 + Reranker + 记忆持久化
+cd layer8
+python chat_layer8.py
+
+# Agent + Function Calling + 工具调用（Layer 7）
 cd layer7
 python chat_agent.py
 
@@ -106,13 +113,15 @@ python chat_mine.py
 
 **Layer 7**：三个工具（`search_web` / `write_note` / `save_quiz`）以 JSON Schema 传给模型，由模型通过 `tool_choice="auto"` 自主决策调用时机；`run_agent` 实现 Function Calling 主循环（max_turns=10）；历史截断改为只在 `role=user` 处切割，保证 `tool_calls` / `tool` 消息对始终完整。
 
+**Layer 8**：检索链路升级为三阶段漏斗——向量检索（top10）和 BM25 关键词检索（top10）并行触发，RRF 合并去重后取 top15 候选，Reranker（bge-reranker-base Cross-Encoder）对候选精排后取 top5 注入 prompt。BM25 索引启动时从 Chroma 全量拉取文档构建，jieba 分词处理中文。新增 `/sources` 命令展示每轮检索来源和 rerank 分数。
+
 ## 已知局限与待优化项
 
 - **混合意图**：Router（Layer 6）当前输出单一标签，"查一下知识库，上一条说的不对"这类同时包含 `followup` 和 `rag` 的输入无法正确处理。待优化为多标签输出。
 - **缓存持久化**：语义缓存存在内存中，重启即清空。实际项目建议替换为 Redis（同时解决性能和持久化问题）。
 - **跨语言语义**：bge-small-zh 为中文模型，"你好" vs "hello" 余弦相似度仅 0.471，跨语言语义缓存命中率极低。
 - **知识库同步**：当前采用全量重建，实际项目建议改为差量同步（计算切片 ID 差集，只删除失效条目、新增变更条目）。
-- **纯向量召回**：Layer 3-7 的检索均为单一向量检索，精确名词、缩写、版本号等场景下召回质量有限，待 Layer 8 引入混合检索 + Reranker 改善。
+- **Reranker 延迟**：bge-reranker-base 在 CPU 上对 15 个候选的精排耗时约 30-60 秒，生产环境需要 GPU 或替换更小的 Reranker 模型。
 
 ## 学习笔记
 

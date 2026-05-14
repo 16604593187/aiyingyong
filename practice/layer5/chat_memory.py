@@ -8,7 +8,7 @@ import importlib.util
 
 from openai import OpenAI
 
-from memory import MemoryManager
+from memory import MemoryManager, HistoryCompressor
 
 CURRENT_DIR = Path(__file__).resolve().parent
 LAYER1_DIR = CURRENT_DIR.parent / "layer1"
@@ -39,17 +39,44 @@ client = OpenAI(
     base_url=config_mine.OPENAI_API_BASE,
 )
 
+# ── 历史压缩器 ─────────────────────────────────────────────────
+# compress_threshold=20 条消息（=10 轮）时触发自动压缩
+# compress_turns=10     每次压缩最旧的 10 轮（20 条）
+compressor = HistoryCompressor(
+    client=client,
+    model=config_mine.OPENAI_API_MODEL,
+    compress_threshold=20,
+    compress_turns=10,
+)
+
 
 def trim_messages(messages: list[dict], max_turns: int) -> list[dict]:
-    """只保留最近 max_turns 轮（一轮 = user + assistant 各一条）。"""
+    """
+    发送给 API 前的短期截断：只保留最近 max_turns 轮。
+    注意：这里的 messages 可能已经包含摘要消息（role=system），
+    截断时保留最前面的摘要消息 + 最近若干轮原文。
+    """
     if max_turns <= 0:
         return []
 
-    max_messages = max_turns * 2
-    if len(messages) <= max_messages:
+    # 找出所有 role=user 的下标（安全截断点）
+    user_indices = [i for i, m in enumerate(messages) if m.get("role") == "user"]
+
+    if len(user_indices) <= max_turns:
         return messages
 
-    return messages[-max_messages:]
+    # 从倒数第 max_turns 个 user 消息处截断
+    start = user_indices[len(user_indices) - max_turns]
+
+    # 如果最前面有摘要消息，保留它
+    prefix: list[dict] = []
+    if messages and messages[0].get("role") == "system" and messages[0].get("content", "").startswith("[以下是早期对话的摘要"):
+        prefix = [messages[0]]
+        # 确保 start 不把摘要消息也截掉
+        if start == 0:
+            start = 1
+
+    return prefix + messages[start:]
 
 
 def chat(user_input: str, history: list[dict]) -> tuple[str, list[dict]]:
@@ -95,14 +122,17 @@ def chat(user_input: str, history: list[dict]) -> tuple[str, list[dict]]:
 
 def print_welcome() -> None:
     print("=" * 60)
-    print("  Second Brain —— 第五层：带持久记忆的对话终端")
+    print("  Second Brain —— 第五层：带持久记忆 + 历史压缩的对话终端")
     print("=" * 60)
     print(f"  模型：{config_mine.OPENAI_API_MODEL}")
     print(f"  上下文最大轮数（发送给 API）：{config_mine.MAX_HISTORY_TURNS}")
+    print(f"  懒压缩阈值：{compressor.compress_threshold} 条消息")
+    print(f"  每次压缩轮数：{compressor.compress_turns} 轮")
     print()
     print("  命令：")
     print("    /history      —— 查看当前会话历史（完整存盘）")
     print("    /api_history  —— 查看发送给 API 的历史窗口")
+    print("    /compress     —— 手动触发一次历史压缩")
     print("    /clear        —— 清空当前会话历史")
     print("    /exit         —— 退出程序")
     print("=" * 60)
@@ -117,12 +147,13 @@ def print_history(history: list[dict]) -> None:
     print(f"\n[对话历史，共 {len(history)} 条消息]")
     print("-" * 40)
     for i, msg in enumerate(history, 1):
-        role_label = "用户" if msg.get("role") == "user" else "助手"
+        role = msg.get("role", "unknown")
         content = str(msg.get("content", ""))
         content_preview = content[:100]
         if len(content) > 100:
             content_preview += "..."
-        print(f"  [{i}] {role_label}：{content_preview}")
+        label = {"user": "用户", "assistant": "助手", "system": "摘要"}.get(role, role)
+        print(f"  [{i}] {label}：{content_preview}")
     print("-" * 40)
     print()
 
@@ -137,7 +168,7 @@ def print_api_history(history: list[dict]) -> None:
         print("  [无历史消息，将仅发送 system prompt + 当前问题]\n")
         return
 
-    print(f"  [历史消息 {len(window)} 条，来自最近 {config_mine.MAX_HISTORY_TURNS} 轮]")
+    print(f"  [历史消息 {len(window)} 条]")
     for i, msg in enumerate(window, 1):
         role = msg.get("role", "unknown")
         content = str(msg.get("content", ""))
@@ -200,20 +231,41 @@ def main() -> None:
                 print("\n[检测到最后一轮未完成，已移除末尾 user 消息后再保存]\n")
             print(f"\n[对话结束，session={session_id} 历史已保存]\n")
             break
+
         elif user_input == "/clear":
             history = []
             memory.save(session_id, history)
             print("\n[当前 session 对话历史已清空并保存]\n")
             continue
+
         elif user_input == "/history":
             print_history(history)
             continue
+
         elif user_input == "/api_history":
             print_api_history(history)
             continue
 
+        elif user_input == "/compress":
+            before = len(history)
+            print("\n[手动触发历史压缩...]")
+            history = compressor.compress(history)
+            after = len(history)
+            memory.save(session_id, history)
+            print(f"[压缩完成：{before} 条 → {after} 条，已保存]\n")
+            continue
+
         try:
             _, history = chat(user_input, history)
+
+            # ── 懒压缩：每轮对话后检查是否超过阈值 ──────────────
+            if compressor.should_compress(history):
+                before = len(history)
+                print("\n[历史超过阈值，自动触发压缩...]")
+                history = compressor.compress(history)
+                after = len(history)
+                print(f"[压缩完成：{before} 条 → {after} 条]\n")
+
             memory.save(session_id, history)
         except Exception as exc:
             print(f"Error: {exc}\n")

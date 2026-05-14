@@ -1,0 +1,62 @@
+[
+  {
+    "question": "RAG 的完整流水线包含哪些步骤？",
+    "ground_truth": "RAG 的完整流水线包含五个步骤：对用户问题做 Embedding 向量化，在向量库里检索 Top-K 相关片段，把检索结果和用户问题拼成 Prompt，调模型生成答案，返回答案和参考来源。",
+    "expected_tool": "search_knowledge_base"
+  },
+  {
+    "question": "余弦相似度和欧氏距离有什么区别？为什么 Embedding 场景更适合用余弦相似度？",
+    "ground_truth": "欧氏距离受向量长度影响，长文本生成的向量模更大，会导致长文本之间天然更相似的假象。余弦相似度只看方向，归一化掉了长度的影响，更适合语义比较。",
+    "expected_tool": "search_knowledge_base"
+  },
+  {
+    "question": "BM25 的参数 k1 和 b 分别控制什么？",
+    "ground_truth": "k1 控制词频饱和度，词频增加到一定程度后收益趋于饱和，k1 越大饱和越慢。b 控制文档长度归一化的强度，b=0 不考虑文档长度，b=1 完全归一化。",
+    "expected_tool": "search_knowledge_base"
+  },
+  {
+    "question": "Reranker 为什么不能直接对全量知识库做精排？",
+    "ground_truth": "Reranker 使用 Cross-Encoder 架构，把 query 和文档拼接成一个输入一起送入模型，每对 (query, 文档) 都需要一次独立的模型推理，复杂度是 O(n)，不适合对全量知识库精排，只适合对召回后的少量候选（10-20 个）做精排。",
+    "expected_tool": "search_knowledge_base"
+  },
+  {
+    "question": "Bi-Encoder 和 Cross-Encoder 的区别是什么？",
+    "ground_truth": "Bi-Encoder 把 query 和文档分别独立编码成向量，相似度是两个向量的点积或余弦值，速度快但缺少 query-文档之间的深度交互。Cross-Encoder 把 query 和文档拼接成一个输入序列一起送入模型，模型在 attention 层可以充分捕捉 query 和文档中每个词之间的关联，打分精度远高于 Bi-Encoder，但代价是每对都需要独立推理。",
+    "expected_tool": "search_knowledge_base"
+  },
+  {
+    "question": "内容压缩（Contextual Compression）和对话历史压缩有什么区别？",
+    "ground_truth": "对话历史压缩（第五层懒压缩）是对对话历史做摘要，解决历史太长放不进 context window 的问题，压缩对象是时间序列上的多轮对话。Contextual Compression（第九层）是对检索片段做精简，解决片段里无关内容太多的问题，压缩对象是单个文档片段。两者目标、时机和实现方式完全不同。",
+    "expected_tool": "search_knowledge_base"
+  },
+  {
+    "question": "RRF 合并策略的原理是什么？为什么不直接对两个检索器的分数加权求和？",
+    "ground_truth": "RRF 对每个文档把它在各个列表中的名次取倒数加上常数 k（通常取 60）后求倒数，再将所有来源的得分求和。不直接加权求和的原因是向量相似度和 BM25 分数的量纲完全不同，直接加权需要仔细调参做归一化，而名次信息本身就足够稳健，不需要归一化。",
+    "expected_tool": "search_knowledge_base"
+  },
+  {
+    "question": "Function Calling 中 tool_choice 参数有哪几种模式？",
+    "ground_truth": "tool_choice 有三种模式：none 表示禁止调用任何工具，模型只能文字回复；auto 表示由模型自主判断是否需要调用；指定具体工具名表示强制调用该工具。实际开发中 auto 是默认选择。",
+    "expected_tool": "search_knowledge_base"
+  },
+  {
+    "question": "为什么 Agent 的历史截断只能在 role=user 处切片？",
+    "ground_truth": "引入 Function Calling 后，一轮用户请求可能对应 user、assistant（tool_calls）、tool（结果）等多条消息。如果截断点落在 tool_calls 和 tool 消息之间，messages 里会有 tool_calls 但没有对应的 tool 结果，API 会返回格式校验错误。只在 role=user 处截断可以保证 tool_calls/tool 消息组始终完整。",
+    "expected_tool": "search_knowledge_base"
+  },
+  {
+    "question": "第十层为什么去掉了 Router？",
+    "ground_truth": "Agent（tool_choice=auto）天然具备判断要不要用工具的能力，等价于 Router 的意图分类职责。模型通过工具描述自己决定何时检索知识库、何时联网搜索、何时直接回答。去掉 Router 减少了一次独立的 LLM 调用，降低延迟和成本，同时更灵活——模型可以一次调用多个工具、可以搜完不满意再搜一次。",
+    "expected_tool": "search_knowledge_base"
+  },
+  {
+    "question": "你好",
+    "ground_truth": "你好！有什么可以帮你的吗？",
+    "expected_tool": null
+  },
+  {
+    "question": "今天天气怎么样？",
+    "ground_truth": "作为 AI 助手，我无法获取实时天气信息。你可以查看天气预报应用或网站获取最新天气。",
+    "expected_tool": null
+  }
+]
